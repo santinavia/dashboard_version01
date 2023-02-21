@@ -1,0 +1,94 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    #vertical_layout: scroll #scroll #fill -fixed
+    theme: sandstone ## broad customization 
+    #css: cssfile.css ## more layout control 
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+```
+Sidebar {.sidebar}
+=======================================================================
+Text for all tabs and pages. <br> For context. In another line
+
+Context
+=======================================================================
+
+Row {data-height=10}
+-----------------------------------------------------------------------
+### Chart A {.no-padding}
+
+```{r}
+
+```
+
+Row {data-height=10}
+-----------------------------------------------------------------------
+
+### Map of the Pacific Region {data-padding=20}
+
+```{r}
+
+```
+
+
+
+Exploring ETC
+====================================================
+
+Row {data-height=10, data-orientation=columns, layout=scroll}
+-----------------------------------------------------------------------
+### Average historical scores, MATH
+
+```{r}
+
+```
+
+### Percentage of students at proficiency levels, MATH
+
+```{r}
+
+```
+Row {data-height=10, data-orientation=columns}
+-----------------------------------------------------------------------
+### Average historical scores, READING
+
+```{r}
+
+```
+
+### Percentage of students at proficiency levels, READING
+
+```{r}
+
+```
+
+Row {data-height=20 .tabset}
+-----------------------------------------------------------------------
+### Chart E
+
+```{r}
+
+```
+
+### Chart F
+
+```{r}
+
+```
+
+
+Comparing ETCs
+====================================================
+
+### Chart G
+
+```{r}
+
+
+```

@@ -40,20 +40,22 @@ df_filered <- df[df$ENTIDAD %in% etcs_filtradas,]
 
 Sidebar {.sidebar}
 =======================================================================
-Text for all tabs and pages. <br> For context. In another line
+Context information: The following dashboard visualizes a set of interim national assessments on math and reading for grades 3, 5 and 9 in Colombia, and assessments of social studies and natural sciences for some grades in some years. These data have not been leveraged for policy-making at the regional level. This dashboard is intended to provide accessible information for different education actors, especially to inform the new local governments when crafting their development plans. 
 
 Context
 =======================================================================
 
-Row {data-height=10}
+Column {data-width=10}
 -----------------------------------------------------------------------
 ### Chart A {.no-padding}
+
+(Information of the purposes of the assessments, the scope and limitations, and other caveats to interpret the data appropriately)
 
 ```{r}
 
 ```
 
-Row {data-height=10}
+Column {data-width=10}
 -----------------------------------------------------------------------
 
 ### Map of the Pacific Region {data-padding=20}
@@ -87,8 +89,6 @@ ggplot() +
   theme_void()
 
 
-
-
 #####
 
 # tm_shape(colombia0) +
@@ -120,13 +120,80 @@ Row {data-height=10, data-orientation=columns, layout=scroll}
 
 ```{r}
 
+
+
 ```
+
 
 ### Percentage of students at proficiency levels, MATH
 
 ```{r}
+########################################################################
+################     DATA MANIPULATION                   ############### 
+########################################################################
+
+### Set values to filter for
+ciudad_temp <- "Cartago"
+grado <- "Grado5"
+area <- "Matematicas"
+
+### Filter df for ETC, grade, subject area, and relevant columns
+df_filered_temp <- df_filered[df_filered$ENTIDAD == ciudad_temp,]
+df_filered_temp <- df_filered_temp[df_filered_temp$grado == grado,]
+df_filered_temp <- df_filered_temp[df_filered_temp$area == area,]
+df_filered_temp <- df_filered_temp %>% select("ENTIDAD", "PORCENTAJE_INSUFICIENTE", "PORCENTAJE_MINIMO",        
+                                                "PORCENTAJE_SATISFACTORIO", "PORCENTAJE_AVANZADO","N", "ano")
+
+### Create pivot for easier visual
+df_long <- pivot_longer(df_filered_temp, cols = starts_with("PORCENTAJE"), 
+                        names_to = "nivel_desemp", values_to = "porcentaje")
+
+### Recode performance levels 
+df_long$nivel_desemp <- gsub(".*_", "", df_long$nivel_desemp)
+
+### Specify order of levels
+order_levels <- c("AVANZADO", "SATISFACTORIO", "MINIMO", "INSUFICIENTE")
+df_long$ord_nivel_desemp <- factor(df_long$nivel_desemp, levels=order_levels)  ### creates new var to reorder!
 
 ```
+
+```{r}
+########################################################################
+################     PLOTTING                            ############### 
+########################################################################
+
+# Create a stacked area plot
+plot_mate_desemp <- ggplot(df_long, aes(x = ano, y = porcentaje, fill = ord_nivel_desemp)) +
+  geom_area(alpha=0.9) + 
+  labs(
+          x= "Año",
+          y= "",
+          subtitle = "[porcentaje]",
+          title = "Niveles de desempeño en matemáticas para la ETC + ciudad_temp \n en el grado + grado",
+          caption = "Source: ICFES",
+          fill = "Nivel de desempeño"
+          ) +
+  scale_fill_manual(values = c('AVANZADO'='#2c7bb6', 'SATISFACTORIO'='#abd9e9', 
+                               'MINIMO'='#ffffbf', 'INSUFICIENTE'='#fdae61')) + ### alternative greens (#a6d96a, #1a9641)
+  scale_x_continuous(breaks=c(unique(df_long$ano))) +
+  theme_minimal() + 
+  theme(
+          panel.grid.major.y = element_blank(), ### remove gridlines
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_line(size = 1.1),  ### keep major gridlines in x-axis
+          plot.title = element_text(size=14),
+          #aspect.ratio = .5
+      ) 
+  # guides(fill = guide(title = "Proficiency level", #adjust legend
+  #                              title.position="left",
+  #                              #label.position = "top",
+  #                              orientation = "vertical"))
+
+plot_mate_desemp
+```
+
+
 Row {data-height=10, data-orientation=columns}
 -----------------------------------------------------------------------
 ### Average historical scores, READING
@@ -138,18 +205,86 @@ Row {data-height=10, data-orientation=columns}
 ### Percentage of students at proficiency levels, READING
 
 ```{r}
+########################################################################
+################     DATA MANIPULATION                   ############### 
+########################################################################
+
+### Set values to filter for
+ciudad_temp <- "Cartago"
+grado <- "Grado5"
+area <- "Lenguaje"
+
+### Filter df for ETC, grade, subject area, and relevant columns
+df_filered_temp <- df_filered[df_filered$ENTIDAD == ciudad_temp,]
+df_filered_temp <- df_filered_temp[df_filered_temp$grado == grado,]
+df_filered_temp <- df_filered_temp[df_filered_temp$area == area,]
+df_filered_temp <- df_filered_temp %>% select("ENTIDAD", "PORCENTAJE_INSUFICIENTE", "PORCENTAJE_MINIMO",        
+                                                "PORCENTAJE_SATISFACTORIO", "PORCENTAJE_AVANZADO","N", "ano")
+
+### Create pivot for easier visual
+df_long <- pivot_longer(df_filered_temp, cols = starts_with("PORCENTAJE"), 
+                        names_to = "nivel_desemp", values_to = "porcentaje")
+
+### Recode performance levels 
+df_long$nivel_desemp <- gsub(".*_", "", df_long$nivel_desemp)
+
+### Specify order of levels
+order_levels <- c("AVANZADO", "SATISFACTORIO", "MINIMO", "INSUFICIENTE")
+df_long$ord_nivel_desemp <- factor(df_long$nivel_desemp, levels=order_levels)  ### creates new var to reorder!
 
 ```
 
+```{r}
+########################################################################
+################     PLOTTING                            ############### 
+########################################################################
+
+# Create a stacked area plot
+plot_lect_desemp <- ggplot(df_long, aes(x = ano, y = porcentaje, fill = ord_nivel_desemp)) +
+  geom_area(alpha=0.9) + 
+  labs(
+          x= "Año",
+          y= "",
+          subtitle = "[porcentaje]",
+          title = "Niveles de desempeño en lectura para la ETC + ciudad_temp \n en el grado + grado",
+          caption = "Source: ICFES",
+          fill = "Nivel de desempeño"
+          ) +
+  scale_fill_manual(values = c('AVANZADO'='#2c7bb6', 'SATISFACTORIO'='#abd9e9', 
+                               'MINIMO'='#ffffbf', 'INSUFICIENTE'='#fdae61')) + ### alternative greens (#a6d96a, #1a9641)
+  scale_x_continuous(breaks=c(unique(df_long$ano))) +
+  theme_minimal() + 
+  theme(
+          panel.grid.major.y = element_blank(), ### remove gridlines
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_line(size = 1.1),  ### keep major gridlines in x-axis
+          plot.title = element_text(size=14),
+          #aspect.ratio = .5
+      ) 
+  # guides(fill = guide(title = "Proficiency level", #adjust legend
+  #                              title.position="left",
+  #                              #label.position = "top",
+  #                              orientation = "vertical"))
+
+plot_lect_desemp
+```
+
+
 Row {data-height=20 .tabset}
 -----------------------------------------------------------------------
-### Chart E
+### Natural Cience
+
+(some grade levels will display the assessments for natural science, though only for selected years)
 
 ```{r}
 
 ```
 
-### Chart F
+### Social Studies 
+
+(some grade levels will display the assessments for social studies, though only for selected years)
+
 
 ```{r}
 

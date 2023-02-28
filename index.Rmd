@@ -11,7 +11,33 @@ output:
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(tidyverse)
+require(here)
+require(sf)
+require(ggplot2)
+require(osmdata)
+require(tigris)
+require(tidyverse)
+require(viridis)
+require(tidycensus)
+require(tmap)
+require(elevatr)
 ```
+
+```{r}
+### Load data
+df <- read_csv(here('Data/df_ETCs_ALL.csv'))
+#head(df)
+
+### Specify filtered units (ETCs)
+etcs_filtradas <- c('Popayán', 'Pasto','Ipiales','Tumaco','Quibdó','Palmira','Yumbo',
+                      'Tuluá','Cali','Cartago','Buenaventura', 'Buga', 'Jamundí',
+                      'Chocó', 'Valle del Cauca', 'Cauca','Nariño')
+
+df_filered <- df[df$ENTIDAD %in% etcs_filtradas,]
+
+```
+
+
 Sidebar {.sidebar}
 =======================================================================
 Text for all tabs and pages. <br> For context. In another line
@@ -33,6 +59,53 @@ Row {data-height=10}
 ### Map of the Pacific Region {data-padding=20}
 
 ```{r}
+### Load shapefiles for Colombia
+colombia0  <- sf::st_read(here('Data/gadm41_COL_shp/gadm41_COL_0.shp'))
+colombia1  <- sf::st_read(here('Data/gadm41_COL_shp/gadm41_COL_1.shp'))
+colombia2  <- sf::st_read(here('Data/gadm41_COL_shp/gadm41_COL_2.shp'))
+
+### Specify departments in the Pacific region
+departamentos_pacifico <- c('Chocó', 'Valle del Cauca', 'Cauca','Nariño')
+pacifico <- colombia1[colombia1$NAME_1 %in% departamentos_pacifico ,]
+
+
+### Specify cities within regions
+ciudades <- c('Popayán', 'Pasto','Ipiales','Tumaco','Quibdó','Palmira','Yumbo',
+ 'Tuluá','Cali','Cartago','Buenaventura', 'Buga', 'Jamundí')
+ciudades_map <- colombia2[colombia2$NAME_2 %in% ciudades ,]
+
+#### Zoom in a bit??
+#bb <- osmdata::getbb(place_name = 'Colombia')
+#bb
+
+### Plot map
+ggplot() +
+  geom_sf(data = colombia0, color = "gray60") +
+  geom_sf(data = pacifico, fill="#518FB5") +
+  geom_sf(data = ciudades_map, fill="#e34a33") +
+  #coord_sf(xlim = bb[1, ], ylim = bb[2, ])
+  theme_void()
+
+
+
+
+#####
+
+# tm_shape(colombia0) +
+#   tm_polygons("p") +
+#   tm_layout(legend.outside = TRUE)
+# 
+# tmap_mode("view")
+# 
+# tm_shape(transportation) +
+#   tm_polygons("p",
+#               palette = "magma",
+#               border.col = "gray90",
+#               lwd = 0.1,
+#               style='cont') +
+#   tm_shape(centroids) +
+#   tm_text("NAME", size = 0.5) +
+#   tm_layout(legend.outside = TRUE)
 
 ```
 

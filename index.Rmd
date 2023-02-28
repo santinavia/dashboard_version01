@@ -6,6 +6,7 @@ output:
     #vertical_layout: scroll #scroll #fill -fixed
     theme: sandstone ## broad customization 
     #css: cssfile.css ## more layout control 
+    scroll_page: true
 ---
 
 ```{r setup, include=FALSE}
@@ -51,6 +52,11 @@ Column {data-width=10}
 
 (Information of the purposes of the assessments, the scope and limitations, and other caveats to interpret the data appropriately)
 
+NOTE: I am still learning how to map data! The map below is intended to be:
+- Zoomed in, to focus on the specific region 
+- Interactive (can hover to get name and number of students evaluated per grade level)
+- Labeled per region
+
 ```{r}
 
 ```
@@ -82,7 +88,7 @@ ciudades_map <- colombia2[colombia2$NAME_2 %in% ciudades ,]
 
 ### Plot map
 ggplot() +
-  geom_sf(data = colombia0, color = "gray60") +
+  #geom_sf(data = colombia0, color = "gray60") +
   geom_sf(data = pacifico, fill="#518FB5") +
   geom_sf(data = ciudades_map, fill="#e34a33") +
   #coord_sf(xlim = bb[1, ], ylim = bb[2, ])
@@ -114,18 +120,64 @@ ggplot() +
 Exploring ETC
 ====================================================
 
-Row {data-height=10, data-orientation=columns, layout=scroll}
+Row {data-orientation=columns, layout=scroll}
 -----------------------------------------------------------------------
-### Average historical scores, MATH
+### Average historical scores - MATH
 
 ```{r}
+########################################################################
+################     DATA MANIPULATION                   ############### 
+########################################################################
 
+### Set values to filter for
+ciudad_temp <- "Cartago"
+grado <- "Grado5"
+area <- "Matematicas"
 
+### Filter df for ETC, grade, subject area, and relevant columns
+df_filered_temp <- df_filered[df_filered$ENTIDAD == ciudad_temp,]
+df_filered_temp <- df_filered_temp[df_filered_temp$grado == grado,]
+df_filered_temp <- df_filered_temp[df_filered_temp$area == area,]
+df_filered_temp <- df_filered_temp %>% select("ENTIDAD", "PUNTAJE_PROMEDIO", "DESVIACION", "N", "ano")
+
+### Create values std
+df_filered_temp$std_high <- df_filered_temp$PUNTAJE_PROMEDIO + df_filered_temp$DESVIACION
+df_filered_temp$std_low <- df_filered_temp$PUNTAJE_PROMEDIO - df_filered_temp$DESVIACION
+
+```
+```{r}
+########################################################################
+################     PLOTTING                            ############### 
+########################################################################
+
+# Create a line plot with std
+plot_mate_punt <- ggplot(df_filered_temp, aes(x = ano, y = PUNTAJE_PROMEDIO)) +
+  geom_line(color='#2c7bb6', size=1) + 
+  geom_point(aes(x = ano, y = PUNTAJE_PROMEDIO), size=3, shape=18) +
+  geom_ribbon(aes(ymin = std_low, ymax = std_high), alpha = 0.4, fill='#abd9e9' ) + ### produce error shade
+  labs(
+          x= "Año",
+          y= "",
+          subtitle = "[puntaje, banda representa una desviación estandar desde el promedio]",
+          title = "Puntajes promedios en matemáticas para la ETC + ciudad_temp \n en el grado + grado",
+          caption = "Source: ICFES"
+          ) +
+  scale_x_continuous(breaks=c(unique(df_filered_temp$ano))) +
+  theme_minimal() + 
+  theme(
+          panel.grid.major.y = element_blank(), ### remove gridlines
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank(), ### element_line(size = 1.1),  ### keep major gridlines in x-axis
+          plot.title = element_text(size=14),
+          #aspect.ratio = .5
+      ) 
+plot_mate_punt
 
 ```
 
 
-### Percentage of students at proficiency levels, MATH
+### Percentage of students at proficiency levels - MATH
 
 ```{r}
 ########################################################################
@@ -194,15 +246,64 @@ plot_mate_desemp
 ```
 
 
-Row {data-height=10, data-orientation=columns}
+Row {data-orientation=columns}
 -----------------------------------------------------------------------
-### Average historical scores, READING
+### Average historical scores - READING
 
 ```{r}
+########################################################################
+################     DATA MANIPULATION                   ############### 
+########################################################################
+
+### Set values to filter for
+ciudad_temp <- "Cartago"
+grado <- "Grado5"
+area <- "Lenguaje"
+
+### Filter df for ETC, grade, subject area, and relevant columns
+df_filered_temp <- df_filered[df_filered$ENTIDAD == ciudad_temp,]
+df_filered_temp <- df_filered_temp[df_filered_temp$grado == grado,]
+df_filered_temp <- df_filered_temp[df_filered_temp$area == area,]
+df_filered_temp <- df_filered_temp %>% select("ENTIDAD", "PUNTAJE_PROMEDIO", "DESVIACION", "N", "ano")
+
+### Create values std
+df_filered_temp$std_high <- df_filered_temp$PUNTAJE_PROMEDIO + df_filered_temp$DESVIACION
+df_filered_temp$std_low <- df_filered_temp$PUNTAJE_PROMEDIO - df_filered_temp$DESVIACION
 
 ```
 
-### Percentage of students at proficiency levels, READING
+```{r}
+########################################################################
+################     PLOTTING                            ############### 
+########################################################################
+
+# Create a line plot with std
+plot_lect_punt <- ggplot(df_filered_temp, aes(x = ano, y = PUNTAJE_PROMEDIO)) +
+  geom_line(color='#2c7bb6', size=1) + 
+  geom_point(aes(x = ano, y = PUNTAJE_PROMEDIO), size=3, shape=18) +
+  geom_ribbon(aes(ymin = std_low, ymax = std_high), alpha = 0.4, fill='#abd9e9' ) + ### produce error shade
+  labs(
+          x= "Año",
+          y= "",
+          subtitle = "[puntaje, banda representa una desviación estandar desde el promedio]",
+          title = "Puntajes promedios en lectura para la ETC + ciudad_temp \n en el grado + grado",
+          caption = "Source: ICFES"
+          ) +
+  scale_x_continuous(breaks=c(unique(df_filered_temp$ano))) +
+  theme_minimal() + 
+  theme(
+          panel.grid.major.y = element_blank(), ### remove gridlines
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank(), ### element_line(size = 1.1),  ### keep major gridlines in x-axis
+          plot.title = element_text(size=14),
+          #aspect.ratio = .5
+      ) 
+plot_lect_punt
+```
+
+
+### Percentage of students at proficiency levels - READING
 
 ```{r}
 ########################################################################
@@ -273,7 +374,7 @@ plot_lect_desemp
 
 Row {data-height=20 .tabset}
 -----------------------------------------------------------------------
-### Natural Cience
+### Natural Science
 
 (some grade levels will display the assessments for natural science, though only for selected years)
 

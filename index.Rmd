@@ -1,27 +1,30 @@
 ---
-title: "Untitled"
+title: "Pruebas Saber 3, 5 y 9 - Región Pacífico"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
-    #vertical_layout: scroll #scroll #fill -fixed
+    vertical_layout: scroll #scroll #fill -fixed
     theme: sandstone ## broad customization 
     #css: cssfile.css ## more layout control 
-    scroll_page: true
+    scroll_page: True
+  runtime: shiny 
 ---
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
+library(shiny)
 library(tidyverse)
 require(here)
 require(sf)
 require(ggplot2)
+
 require(osmdata)
 require(tigris)
-require(tidyverse)
 require(viridis)
-require(tidycensus)
 require(tmap)
 require(elevatr)
+library(gghighlight)
+library(geomtextpath)
 ```
 
 ```{r}
@@ -33,20 +36,29 @@ df <- read_csv(here('Data/df_ETCs_ALL.csv'))
 etcs_filtradas <- c('Popayán', 'Pasto','Ipiales','Tumaco','Quibdó','Palmira','Yumbo',
                       'Tuluá','Cali','Cartago','Buenaventura', 'Buga', 'Jamundí',
                       'Chocó', 'Valle del Cauca', 'Cauca','Nariño')
+etcs_filtradas <-sort(etcs_filtradas)
 
 df_filered <- df[df$ENTIDAD %in% etcs_filtradas,]
 
+### set grados, unique 
+grados <- unique(df_filered$grado)
+
+### Set areas, unique
+areas <- unique(df_filered$area)
+
+
 ```
-
-
-Sidebar {.sidebar}
-=======================================================================
-Context information: The following dashboard visualizes a set of interim national assessments on math and reading for grades 3, 5 and 9 in Colombia, and assessments of social studies and natural sciences for some grades in some years. These data have not been leveraged for policy-making at the regional level. This dashboard is intended to provide accessible information for different education actors, especially to inform the new local governments when crafting their development plans. 
 
 Context
 =======================================================================
 
-Column {data-width=10}
+Sidebar {.sidebar}
+-----------------------------------------------------------------------
+
+Context information: The following dashboard visualizes a set of interim national assessments on math and reading for grades 3, 5 and 9 in Colombia, and assessments of social studies and natural sciences for some grades in some years. These data have not been leveraged for policy-making at the regional level. This dashboard is intended to provide accessible information for different education actors, especially to inform the new local governments when crafting their development plans. 
+
+
+Row {data-width=100}
 -----------------------------------------------------------------------
 ### Chart A {.no-padding}
 
@@ -61,10 +73,9 @@ NOTE: I am still learning how to map data! The map below is intended to be:
 
 ```
 
-Column {data-width=10}
+Column {data-height=500}
 -----------------------------------------------------------------------
-
-### Map of the Pacific Region {data-padding=20}
+### Map of the Pacific Region {data-padding=0}
 
 ```{r}
 ### Load shapefiles for Colombia
@@ -76,76 +87,163 @@ colombia2  <- sf::st_read(here('Data/gadm41_COL_shp/gadm41_COL_2.shp'))
 departamentos_pacifico <- c('Chocó', 'Valle del Cauca', 'Cauca','Nariño')
 pacifico <- colombia1[colombia1$NAME_1 %in% departamentos_pacifico ,]
 
-
 ### Specify cities within regions
 ciudades <- c('Popayán', 'Pasto','Ipiales','Tumaco','Quibdó','Palmira','Yumbo',
  'Tuluá','Cali','Cartago','Buenaventura', 'Buga', 'Jamundí')
 ciudades_map <- colombia2[colombia2$NAME_2 %in% ciudades ,]
 
+
+###FALTAN "Pasto" "Cali"  "Buga" 
+#ciudades[!ciudades %in% ciudades_map$ENTIDAD]
+
+###Merge departments and cities
+pacifico <- pacifico %>% 
+  select("COUNTRY", "NAME_1", "TYPE_1", "geometry") %>%
+  rename("TYPE"="TYPE_1",
+         "Dept_name"="NAME_1")
+pacifico$ENTIDAD <-pacifico$Dept_name
+
+ciudades_map <- ciudades_map %>% 
+  select("COUNTRY", "NAME_1", "NAME_2", "TYPE_2", "geometry") %>%
+  rename("TYPE"="TYPE_2",
+         "Dept_name"="NAME_1",
+         "ENTIDAD"="NAME_2")
+mapa_pacifico_todo <- rbind(pacifico, ciudades_map)
+
+### COMPUTE number of evaluations
+evals_por_entidad <- df_filered %>%
+  group_by(ENTIDAD, ano) %>%
+  summarize(suma_N = sum(N))
+
+evals_entidad_long <- pivot_wider(evals_por_entidad, names_from=ano, values_from=suma_N)
+
+### Merge mapa con eval
+mapa_pacifico_todo_info <- merge(mapa_pacifico_todo, evals_entidad_long)
+
 #### Zoom in a bit??
 #bb <- osmdata::getbb(place_name = 'Colombia')
 #bb
 
+# ### Plot map
+# ggplot() +
+#   #geom_sf(data = colombia0, color = "gray60") +
+#   geom_sf(data = pacifico, fill="#518FB5") +
+#   geom_sf(data = ciudades_map, fill="#e34a33") +
+#   #coord_sf(xlim = bb[1, ], ylim = bb[2, ])
+#   theme_void()
+
+tmap_mode("view")
+interactive_map <- tm_shape(mapa_pacifico_todo_info) +
+  tm_polygons("TYPE",
+              palette = c("#518FB5","#e34a33"),
+              border.col = "gray90",
+              lwd = 0.1,
+              popup.vars = c("2009","2012","2013","2014","2015","2016","2017")) +
+  tm_layout(legend.outside = TRUE)
+interactive_map
+
+tmap_leaflet(
+      interactive_map, 
+      mode = "view",
+      height = 500
+    )
+```
+
+```{r eval=FALSE}
+tmap_mode("view")
+
+tm_shape(mapa_pacifico_todo_info) +
+  tm_polygons("TYPE",
+              palette = c("#518FB5","#e34a33"),
+              border.col = "gray90",
+              lwd = 0.1,
+              popup.vars = c("suma_N")) +
+  tm_layout(legend.outside = TRUE)
+
+```
+
+### Map of Colombia {data-padding=0}
+```{r}
+# ### Load shapefiles for Colombia
+# colombia0  <- sf::st_read(here('Data/gadm41_COL_shp/gadm41_COL_0.shp'))
+# colombia1  <- sf::st_read(here('Data/gadm41_COL_shp/gadm41_COL_1.shp'))
+# colombia2  <- sf::st_read(here('Data/gadm41_COL_shp/gadm41_COL_2.shp'))
+# 
+# ### Specify departments in the Pacific region
+# departamentos_pacifico <- c('Chocó', 'Valle del Cauca', 'Cauca','Nariño')
+# pacifico <- colombia1[colombia1$NAME_1 %in% departamentos_pacifico ,]
+# 
+# ### Specify cities within regions
+# ciudades <- c('Popayán', 'Pasto','Ipiales','Tumaco','Quibdó','Palmira','Yumbo',
+#  'Tuluá','Cali','Cartago','Buenaventura', 'Buga', 'Jamundí')
+# ciudades_map <- colombia2[colombia2$NAME_2 %in% ciudades ,]
+# 
+# #### Zoom in a bit??
+# #bb <- osmdata::getbb(place_name = 'Colombia')
+# #bb
+
 ### Plot map
 ggplot() +
-  #geom_sf(data = colombia0, color = "gray60") +
+  geom_sf(data = colombia0, color = "gray60") +
   geom_sf(data = pacifico, fill="#518FB5") +
-  geom_sf(data = ciudades_map, fill="#e34a33") +
+  #geom_sf(data = ciudades_map, fill="#e34a33") +
   #coord_sf(xlim = bb[1, ], ylim = bb[2, ])
   theme_void()
-
-
-#####
-
-# tm_shape(colombia0) +
-#   tm_polygons("p") +
-#   tm_layout(legend.outside = TRUE)
-# 
-# tmap_mode("view")
-# 
-# tm_shape(transportation) +
-#   tm_polygons("p",
-#               palette = "magma",
-#               border.col = "gray90",
-#               lwd = 0.1,
-#               style='cont') +
-#   tm_shape(centroids) +
-#   tm_text("NAME", size = 0.5) +
-#   tm_layout(legend.outside = TRUE)
 
 ```
 
 
 
+
 Exploring ETC
 ====================================================
+Sidebar {.sidebar}
+-----------------------------------------------------------------------
+Information on how to properly interpret the results 
 
-Row {data-orientation=columns, layout=scroll}
+
+Row {data-height=75 data-orientation=columns, layout=scroll}
+-----------------------------------------------------------------------
+
+```{r}
+### Widgets 
+selectInput("location", 
+            label = "Select location", 
+            choices = etcs_filtradas,
+            selected = "Cali")
+
+selectInput("grade_level", 
+            label = "Select grade level", 
+            choices = grados,
+            selected = "Grado3")
+```
+
+Row {data-height=320 data-orientation=columns, layout=scroll}
 -----------------------------------------------------------------------
 ### Average historical scores - MATH
 
 ```{r}
+renderPlot({
+### Set values to filter for
+#ciudad_temp <-  input$location #"Cartago" #location
+#grado <-     input$grade_level #"Grado5"     #grade_level
+#area <- "Matematicas"
+
 ########################################################################
 ################     DATA MANIPULATION                   ############### 
 ########################################################################
-
-### Set values to filter for
-ciudad_temp <- "Cartago"
-grado <- "Grado5"
-area <- "Matematicas"
-
+  
 ### Filter df for ETC, grade, subject area, and relevant columns
-df_filered_temp <- df_filered[df_filered$ENTIDAD == ciudad_temp,]
-df_filered_temp <- df_filered_temp[df_filered_temp$grado == grado,]
-df_filered_temp <- df_filered_temp[df_filered_temp$area == area,]
+df_filered_temp <- df_filered[df_filered$ENTIDAD == input$location,]
+df_filered_temp <- df_filered_temp[df_filered_temp$grado == input$grade_level,]
+df_filered_temp <- df_filered_temp[df_filered_temp$area == "Matematicas",]
 df_filered_temp <- df_filered_temp %>% select("ENTIDAD", "PUNTAJE_PROMEDIO", "DESVIACION", "N", "ano")
 
 ### Create values std
 df_filered_temp$std_high <- df_filered_temp$PUNTAJE_PROMEDIO + df_filered_temp$DESVIACION
 df_filered_temp$std_low <- df_filered_temp$PUNTAJE_PROMEDIO - df_filered_temp$DESVIACION
 
-```
-```{r}
+
 ########################################################################
 ################     PLOTTING                            ############### 
 ########################################################################
@@ -174,25 +272,29 @@ plot_mate_punt <- ggplot(df_filered_temp, aes(x = ano, y = PUNTAJE_PROMEDIO)) +
       ) 
 plot_mate_punt
 
+}) ## ends interactive plot
+
 ```
 
 
 ### Percentage of students at proficiency levels - MATH
 
 ```{r}
+renderPlot({                         ### activates interactive plot
+  
 ########################################################################
 ################     DATA MANIPULATION                   ############### 
 ########################################################################
 
-### Set values to filter for
-ciudad_temp <- "Cartago"
-grado <- "Grado5"
-area <- "Matematicas"
+### Set values to filter for --- from INPUTS! 
+#ciudad_temp <- input$location
+#grado <- input$grade_level
+#area <- "Matematicas"
 
 ### Filter df for ETC, grade, subject area, and relevant columns
-df_filered_temp <- df_filered[df_filered$ENTIDAD == ciudad_temp,]
-df_filered_temp <- df_filered_temp[df_filered_temp$grado == grado,]
-df_filered_temp <- df_filered_temp[df_filered_temp$area == area,]
+df_filered_temp <- df_filered[df_filered$ENTIDAD == input$location,]
+df_filered_temp <- df_filered_temp[df_filered_temp$grado == input$grade_level,]
+df_filered_temp <- df_filered_temp[df_filered_temp$area == "Matematicas",]
 df_filered_temp <- df_filered_temp %>% select("ENTIDAD", "PORCENTAJE_INSUFICIENTE", "PORCENTAJE_MINIMO",        
                                                 "PORCENTAJE_SATISFACTORIO", "PORCENTAJE_AVANZADO","N", "ano")
 
@@ -207,9 +309,7 @@ df_long$nivel_desemp <- gsub(".*_", "", df_long$nivel_desemp)
 order_levels <- c("AVANZADO", "SATISFACTORIO", "MINIMO", "INSUFICIENTE")
 df_long$ord_nivel_desemp <- factor(df_long$nivel_desemp, levels=order_levels)  ### creates new var to reorder!
 
-```
 
-```{r}
 ########################################################################
 ################     PLOTTING                            ############### 
 ########################################################################
@@ -243,36 +343,39 @@ plot_mate_desemp <- ggplot(df_long, aes(x = ano, y = porcentaje, fill = ord_nive
   #                              orientation = "vertical"))
 
 plot_mate_desemp
+
+}) ## ends interactive plot
+
 ```
 
 
-Row {data-orientation=columns}
+Row {data-height=320 data-orientation=columns}
 -----------------------------------------------------------------------
 ### Average historical scores - READING
 
 ```{r}
+renderPlot({                         ### activates interactive plot
+
 ########################################################################
 ################     DATA MANIPULATION                   ############### 
 ########################################################################
 
-### Set values to filter for
-ciudad_temp <- "Cartago"
-grado <- "Grado5"
-area <- "Lenguaje"
+### Set values to filter for --- from INPUTS! 
+#ciudad_temp <- input$location
+#grado <- input$grade_level
+#area <- "Lenguaje"
+
 
 ### Filter df for ETC, grade, subject area, and relevant columns
-df_filered_temp <- df_filered[df_filered$ENTIDAD == ciudad_temp,]
-df_filered_temp <- df_filered_temp[df_filered_temp$grado == grado,]
-df_filered_temp <- df_filered_temp[df_filered_temp$area == area,]
+df_filered_temp <- df_filered[df_filered$ENTIDAD == input$location,]
+df_filered_temp <- df_filered_temp[df_filered_temp$grado == input$grade_level,]
+df_filered_temp <- df_filered_temp[df_filered_temp$area == "Lenguaje",]
 df_filered_temp <- df_filered_temp %>% select("ENTIDAD", "PUNTAJE_PROMEDIO", "DESVIACION", "N", "ano")
 
 ### Create values std
 df_filered_temp$std_high <- df_filered_temp$PUNTAJE_PROMEDIO + df_filered_temp$DESVIACION
 df_filered_temp$std_low <- df_filered_temp$PUNTAJE_PROMEDIO - df_filered_temp$DESVIACION
 
-```
-
-```{r}
 ########################################################################
 ################     PLOTTING                            ############### 
 ########################################################################
@@ -300,25 +403,30 @@ plot_lect_punt <- ggplot(df_filered_temp, aes(x = ano, y = PUNTAJE_PROMEDIO)) +
           #aspect.ratio = .5
       ) 
 plot_lect_punt
+
+}) ## ends interactive plot
 ```
+
 
 
 ### Percentage of students at proficiency levels - READING
 
 ```{r}
+renderPlot({                         ### activates interactive plot
+
 ########################################################################
 ################     DATA MANIPULATION                   ############### 
 ########################################################################
 
-### Set values to filter for
-ciudad_temp <- "Cartago"
-grado <- "Grado5"
-area <- "Lenguaje"
+### Set values to filter for --- from INPUTS! 
+#ciudad_temp <- input$location
+#grado <- input$grade_level
+#area <- "Lenguaje"
 
 ### Filter df for ETC, grade, subject area, and relevant columns
-df_filered_temp <- df_filered[df_filered$ENTIDAD == ciudad_temp,]
-df_filered_temp <- df_filered_temp[df_filered_temp$grado == grado,]
-df_filered_temp <- df_filered_temp[df_filered_temp$area == area,]
+df_filered_temp <- df_filered[df_filered$ENTIDAD == input$location,]
+df_filered_temp <- df_filered_temp[df_filered_temp$grado == input$grade_level,]
+df_filered_temp <- df_filered_temp[df_filered_temp$area == "Lenguaje",]
 df_filered_temp <- df_filered_temp %>% select("ENTIDAD", "PORCENTAJE_INSUFICIENTE", "PORCENTAJE_MINIMO",        
                                                 "PORCENTAJE_SATISFACTORIO", "PORCENTAJE_AVANZADO","N", "ano")
 
@@ -333,9 +441,7 @@ df_long$nivel_desemp <- gsub(".*_", "", df_long$nivel_desemp)
 order_levels <- c("AVANZADO", "SATISFACTORIO", "MINIMO", "INSUFICIENTE")
 df_long$ord_nivel_desemp <- factor(df_long$nivel_desemp, levels=order_levels)  ### creates new var to reorder!
 
-```
 
-```{r}
 ########################################################################
 ################     PLOTTING                            ############### 
 ########################################################################
@@ -369,10 +475,12 @@ plot_lect_desemp <- ggplot(df_long, aes(x = ano, y = porcentaje, fill = ord_nive
   #                              orientation = "vertical"))
 
 plot_lect_desemp
+
+}) ## ends interactive plot
 ```
 
 
-Row {data-height=20 .tabset}
+Row {data-height=320 .tabset}
 -----------------------------------------------------------------------
 ### Natural Science
 
@@ -395,9 +503,170 @@ Row {data-height=20 .tabset}
 Comparing ETCs
 ====================================================
 
-### Chart G
+Sidebar {.sidebar}
+-----------------------------------------------------------------------
 
 ```{r}
+### TRIAL, removed below
+##Row {data-height=25 data-orientation=columns, layout=scroll}  data-width=50
 
+### Widgets 
+
+checkboxGroupInput("checkbox", 
+                   label = "Select locations",
+                   choices = etcs_filtradas,
+                   selected = c("Cali", "Popayán", "Pasto","Quibdó"))
+
+### Removed, need to select multiple in checkbox above 
+#selectInput("location_compared", label = "Select location", choices = etcs_filtradas)
+
+selectInput("grade_level_compared", 
+            label = "Select grade level", 
+            choices = grados,
+            selected = "Grado3")
+
+selectInput("areas_compared", 
+            label = "Select area", 
+            choices = areas,
+            selected = "Matematicas")
 
 ```
+
+Row {data-height=600 data-orientation=columns, layout=scroll}
+-----------------------------------------------------------------------
+### Comparting ETCs
+
+```{r}
+renderPlot({                         ### activates interactive plot
+
+########################################################################
+################     DATA MANIPULATION                   ############### 
+########################################################################
+
+### Set values to filter for --- from INPUTS! 
+#ciudad_temp <- input$location_compared
+#grado <- input$grade_level_compared
+#area <- input$areas_compared
+
+### Filter df for ETC, grade, subject area, and relevant columns
+df_filered_comp <- df_filered ###[df_filered$ENTIDAD %in% input$checkbox,], now map all and highlight 
+df_filered_comp <- df_filered_comp[df_filered_comp$grado == input$grade_level_compared,]
+df_filered_comp <- df_filered_comp[df_filered_comp$area == input$areas_compared,]
+df_filered_comp <- df_filered_comp %>% select("ENTIDAD", "PUNTAJE_PROMEDIO", "DESVIACION", "N", "ano")
+
+### Create values std
+df_filered_comp$std_high <- df_filered_comp$PUNTAJE_PROMEDIO + df_filered_comp$DESVIACION
+df_filered_comp$std_low <- df_filered_comp$PUNTAJE_PROMEDIO - df_filered_comp$DESVIACION
+
+########################################################################
+################     PLOTTING                            ############### 
+########################################################################
+
+# Create a line plot without stds
+plot_comparaciones <- ggplot(df_filered_comp, aes(x = ano, y = PUNTAJE_PROMEDIO, color=ENTIDAD)) +
+  geom_line(size=2) + 
+  gghighlight(ENTIDAD %in% input$checkbox, 
+              unhighlighted_params = list(linewidth = 1),
+              label_params = list(size = 8)) +  ## line_label_type = "label_path",
+  geom_point(aes(x = ano, y = PUNTAJE_PROMEDIO), size=5, shape=18) +
+  #geom_ribbon(aes(ymin = std_low, ymax = std_high), alpha = 0.4, fill='#abd9e9' ) + ### produce error shade
+  labs(
+          x= "Año",
+          y= "",
+          #subtitle = "[puntaje, banda representa una desviación estandar desde el promedio]",
+          title = "Puntajes promedios en (area) en (grado)",
+          caption = "Source: ICFES"
+          ) +
+  scale_x_continuous(breaks=c(unique(df_filered_comp$ano))) +
+  scale_color_viridis(discrete=TRUE) +
+  theme_minimal() + 
+  theme(
+          panel.grid.major.y = element_blank(), ### remove gridlines
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank(), ### element_line(size = 1.1),  ### keep major gridlines in x-axis?
+          plot.title = element_text(size=18),
+          axis.text = element_text(size=14),
+          axis.title.x = element_text(size=16),
+          #aspect.ratio = .5
+      ) 
+plot_comparaciones
+
+}) ## ends interactive plot
+```
+
+```{r eval=FALSE}
+########################################################################
+################     DATA MANIPULATION                   ############### 
+########################################################################
+
+### Set values to filter for --- from INPUTS! 
+#ciudad_temp <- input$location_compared
+#grado <- input$grade_level_compared
+#area <- input$areas_compared
+
+### Filter df for ETC, grade, subject area, and relevant columns
+#df_filered_comp <- df_filered[df_filered$ENTIDAD %in% input$checkbox,]
+#df_filered_comp <- df_filered_comp[df_filered_comp$grado == input$grade_level_compared,]
+#df_filered_comp <- df_filered_comp[df_filered_comp$area == input$areas_compared,]
+  
+###TEMP
+ciudades_temp <- c("Cali", "Yumbo", "Pasto","Palmira")
+grado_temp <- "Grado5"
+area_temp <- "Matematicas"
+df_filered_comp <- df_filered##[df_filered$ENTIDAD %in% ciudades_temp,]
+df_filered_comp <- df_filered_comp[df_filered_comp$grado == grado_temp,]
+df_filered_comp <- df_filered_comp[df_filered_comp$area == area_temp,]
+##END TEMP
+
+df_filered_comp <- df_filered_comp %>% select("ENTIDAD", "PUNTAJE_PROMEDIO", "DESVIACION", "N", "ano")
+
+## Reorder based on max value
+max_year <- max(df_filered_comp$ano)
+order <- df_filered_comp[df_filered_comp$ano == max_year,]
+order$ENTIDAD <- reorder(order$ENTIDAD, order$PUNTAJE_PROMEDIO, FUN= max)
+#df_filered_comp$ENTIDAD <- reorder(df_filered_comp$ENTIDAD, df_filered_comp$PUNTAJE_PROMEDIO, FUN= max)
+
+### Create values std
+#df_filered_comp$std_high <- df_filered_comp$PUNTAJE_PROMEDIO + df_filered_comp$DESVIACION
+#df_filered_comp$std_low <- df_filered_comp$PUNTAJE_PROMEDIO - df_filered_comp$DESVIACION
+
+########################################################################
+################     PLOTTING                            ############### 
+########################################################################
+
+# Create a line plot with std
+plot_comparaciones <- ggplot(df_filered_comp, aes(x = ano, y = PUNTAJE_PROMEDIO, color=ENTIDAD)) +
+  geom_line(size=1) + 
+  gghighlight(ENTIDAD %in% ciudades_temp, unhighlighted_params = list(linewidth = 1),
+              line_label_type = "label_path", label_params = list(size = 10)) +  ##  
+  geom_point(aes(x = ano, y = PUNTAJE_PROMEDIO), size=3, shape=18) +
+  #geom_ribbon(aes(ymin = std_low, ymax = std_high), alpha = 0.4, fill='#abd9e9' ) + ### produce error shade
+  labs(
+          x = "Ano",
+          y = " ", 
+          title = "Puntajes promedios en {area_temp} en {grado_temp}",
+          caption = "Source: ICFES",
+          ) +
+  scale_x_continuous(breaks=c(unique(df_filered_comp$ano))) +
+  scale_color_viridis(discrete=TRUE) +
+  theme_minimal() + 
+  theme(
+          panel.grid.major.y = element_blank(), ### remove gridlines
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank(), ### element_line(size = 1.1),  ### keep major gridlines in x-axis
+          plot.title = element_text(size=18),
+          axis.text = element_text(size=16),
+          axis.title.x = element_text(size=14),
+          #aspect.ratio = .5
+      ) 
+  
+plot_comparaciones
+```
+
+
+
+
+
+

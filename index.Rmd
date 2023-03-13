@@ -55,27 +55,34 @@ Context
 Sidebar {.sidebar}
 -----------------------------------------------------------------------
 
-Context information: The following dashboard visualizes a set of interim national assessments on math and reading for grades 3, 5 and 9 in Colombia, and assessments of social studies and natural sciences for some grades in some years. These data have not been leveraged for policy-making at the regional level. This dashboard is intended to provide accessible information for different education actors, especially to inform the new local governments when crafting their development plans. 
+**Context of the evaluations**
+<br>
+The Pruebas Saber 3º, 5º y 9º are evaluations as part a strategy of the Colombian national government, through the Colombian Institute for the Evaluation of Education (ICFES), to measure the learning processes of students in the country. The other main purposes of this effort are: <br>
+- to evaluate different areas of knowledge; <br>
+- to understand the factors associated with learning development; and <br>
+- to measure the socio-emotional skills of students.
+<br>
+<br>
+**Characteristics of the evaluations** <br>
+These evaluations are a **sampled** and not _census_ - that is, not all educational institutions participate in the evaluations, but the results seek to be representative of the different territorial entities. The tests were applied up to 2017 and were reviewed for several years, giving way to a second cycle starting in **2022**. The scores from these two stages are not comparable: the most recent results are the new **baseline** for measuring competencies from now on. To learn more details about the tests and their application, visit the following website: 
 
 
 Row {data-width=100}
 -----------------------------------------------------------------------
-### Chart A {.no-padding}
+### **Purpose of the dashboard**
+This dashboard has been created with the purpose of visualizing the results of the Saber 3, 5, and 9 evaluations in the Pacific region of Colombia. It is not only about taking advantage of microdata at the level of Certified Territorial Entities (ETCs), but also about providing **actionable information** for decision makers in the territory and thus allowing better responses to the needs of each educational context.
+<br>
+**Content**
+<br>
+- On this first page, you will find a map of the ETCs in the region and the number of evaluations that were carried out per year. <br>
+- On the second page, you will find the average scores for each ETC in the years when evaluations were conducted. There are also visualizations of the percentages by performance levels for each of the evaluated areas. <br>
+- Finally, the last page allows a comparison of the average scores of the different ETCs in the region for each grade and subject area.
 
-(Information of the purposes of the assessments, the scope and limitations, and other caveats to interpret the data appropriately)
 
-NOTE: I am still learning how to map data! The map below is intended to be:
-- Zoomed in, to focus on the specific region 
-- Interactive (can hover to get name and number of students evaluated per grade level)
-- Labeled per region
-
-```{r}
-
-```
 
 Column {data-height=500}
 -----------------------------------------------------------------------
-### Map of the Pacific Region {data-padding=0}
+### **Map of the Pacific Region** {data-padding=0}
 
 ```{r}
 ### Load shapefiles for Colombia
@@ -132,7 +139,6 @@ mapa_pacifico_todo_info <- merge(mapa_pacifico_todo, evals_entidad_long)
 #   #coord_sf(xlim = bb[1, ], ylim = bb[2, ])
 #   theme_void()
 
-tmap_mode("view")
 interactive_map <- tm_shape(mapa_pacifico_todo_info) +
   tm_polygons("TYPE",
               palette = c("#518FB5","#e34a33"),
@@ -141,12 +147,13 @@ interactive_map <- tm_shape(mapa_pacifico_todo_info) +
               popup.vars = c("2009","2012","2013","2014","2015","2016","2017")) +
   tm_layout(legend.outside = TRUE)
 interactive_map
+tmap_mode("view")
 
-tmap_leaflet(
-      interactive_map, 
-      mode = "view",
-      height = 500
-    )
+# tmap_leaflet(
+#       interactive_map,
+#       mode = "view",
+#       height = 500
+#     )
 ```
 
 ```{r eval=FALSE}
@@ -162,7 +169,7 @@ tm_shape(mapa_pacifico_todo_info) +
 
 ```
 
-### Map of Colombia {data-padding=0}
+### **Map of Colombia** {data-padding=0}
 ```{r}
 # ### Load shapefiles for Colombia
 # colombia0  <- sf::st_read(here('Data/gadm41_COL_shp/gadm41_COL_0.shp'))
@@ -199,7 +206,14 @@ Exploring ETC
 ====================================================
 Sidebar {.sidebar}
 -----------------------------------------------------------------------
-Information on how to properly interpret the results 
+**Guides for interpreting results** <br>
+_Relevant years and areas_ <br>
+The Colombian Institute for the Evaluation of Education (ICFES) applied different evaluations in different years. The first year of the tests - 2009 - was a pilot year where math, language, and natural science evaluations were applied to 5th and 9th grades. Between 2012 and 2017, the evaluations were applied every year for 3rd, 5th, and 9th grades in the areas of **mathematics** and **language**. In _even_ years, **natural sciences** were evaluated for 5th and 9th grades, and in _odd years_, **citizenship skills** were evaluated again for 5th and 9th grades.
+<br>
+_Average scores_ <br>
+Average scores are reported for each ETC. Due to the sampling nature of the tests, there is a margin of error and uncertainty. It is appropriate to interpret the results with this margin in mind. <br> 
+_Performance levels_ <br>
+The ICFES categorizes performance levels into 4 categories: **advanced**, **satisfactory**, **minimum**, and **insufficient**. To learn more about the meaning of each of these categories, visit (link).
 
 
 Row {data-height=75 data-orientation=columns, layout=scroll}
@@ -664,6 +678,54 @@ plot_comparaciones <- ggplot(df_filered_comp, aes(x = ano, y = PUNTAJE_PROMEDIO,
   
 plot_comparaciones
 ```
+
+
+View code
+=======================================================================
+
+```{r eval=FALSE}
+ # Add a button to view the source code
+ actionButton("view_code", "View Source Code")
+
+ # Render the code when the button is clicked
+ renderPrint({
+   # Get the source code of the dashboard
+   code <- capture.output({
+     cat("```{r}\n")
+     cat(readLines("my_dashboard.Rmd"), sep = "\n")
+     cat("\n```")
+   })
+
+   # Display the code
+   code
+ })
+```
+
+
+Translate
+=======================================================================
+
+```{r eval=FALSE}
+# Add a button to translate to English
+actionButton("translate", "Translate to English")
+
+# Define a reactive function to translate the text
+translated_text <- reactive({
+  if (input$translate) {
+    # Translate the text to English using googleLanguageR
+    translate_text(text = "El contenido de mi dashboard en español", target = "en")
+  } else {
+    # Return the original text
+    "El contenido de mi dashboard en español"
+  }
+})
+
+# Display the translated text
+renderText({
+  translated_text()
+})
+```
+
 
 
 
